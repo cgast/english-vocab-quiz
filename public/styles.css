@@ -227,6 +227,17 @@ table {
   font-size: 0.9rem;
 }
 
+.share-toolbar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.share-link {
+  margin: 0;
+  word-break: break-all;
+}
+
 .hint-inline {
   font-size: 0.85rem;
   color: var(--color-text-muted);

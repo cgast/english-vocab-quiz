@@ -3,6 +3,8 @@ import { createDefaultSet } from './vocabData.js';
 const KEY_VOCAB_SETS = 'vq_vocab_sets_v1';
 const KEY_ACTIVE_SET = 'vq_active_set_v1';
 const KEY_GRADE_SCALE = 'vq_grade_scale_v1';
+const KEY_PUBLISH_INFO = 'vq_publish_info_v1';
+const KEY_IMPORTED_REMOTE = 'vq_imported_remote_v1';
 
 export const DEFAULT_GRADE_SCALE = [
   { maxPercent: 5, grade: '1' },
@@ -62,8 +64,26 @@ export function saveGradeScale(scale) {
   writeJson(KEY_GRADE_SCALE, scale);
 }
 
+export function loadPublishInfo() {
+  return readJson(KEY_PUBLISH_INFO, {});
+}
+
+export function savePublishInfo(info) {
+  writeJson(KEY_PUBLISH_INFO, info);
+}
+
+export function loadImportedRemoteMap() {
+  return readJson(KEY_IMPORTED_REMOTE, {});
+}
+
+export function saveImportedRemoteMap(map) {
+  writeJson(KEY_IMPORTED_REMOTE, map);
+}
+
 export function resetAllData() {
   localStorage.removeItem(KEY_VOCAB_SETS);
   localStorage.removeItem(KEY_ACTIVE_SET);
   localStorage.removeItem(KEY_GRADE_SCALE);
+  localStorage.removeItem(KEY_PUBLISH_INFO);
+  localStorage.removeItem(KEY_IMPORTED_REMOTE);
 }

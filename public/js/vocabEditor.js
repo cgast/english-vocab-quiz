@@ -1,5 +1,6 @@
 import * as state from './state.js';
 import { escapeHtml, splitList, downloadFile } from './util.js';
+import { publishSet, updateRemoteSet } from './api.js';
 
 let container = null;
 let suppressRender = false;
@@ -31,6 +32,7 @@ function render() {
   const sets = state.getVocabSets();
   const activeSet = state.getActiveSet();
   if (!activeSet) return;
+  const publishInfo = state.getPublishInfo(activeSet.id);
 
   container.innerHTML = `
     <div class="panel">
@@ -90,6 +92,26 @@ function render() {
         <label class="hint-inline">
           <input type="checkbox" id="import-replace" /> bestehende Listen ersetzen statt ergänzen
         </label>
+      </div>
+
+      <div class="io-toolbar share-toolbar">
+        <div>
+          <button type="button" data-action="publish-set" ${activeSet.entries.length === 0 ? 'disabled' : ''}>
+            ${publishInfo ? 'Link aktualisieren' : 'Veröffentlichen & Link erstellen'}
+          </button>
+          <span id="publish-status" class="hint-inline"></span>
+        </div>
+        ${
+          publishInfo
+            ? `<p class="share-link">
+                 Link zum Üben: <a href="${escapeHtml(publishInfo.url)}" target="_blank" rel="noopener">${escapeHtml(
+                   publishInfo.url
+                 )}</a>
+                 <button type="button" data-action="copy-link">Kopieren</button>
+               </p>
+               <p class="hint">Wer diesen Link öffnet, erhält eine eigene lokale Kopie zum Üben – jede Person übt und wird für sich selbst bewertet.</p>`
+            : `<p class="hint">Veröffentlichen Sie diese Liste, um einen Link zu erhalten, den Schüler:innen zum eigenständigen Üben öffnen können.</p>`
+        }
       </div>
     </div>`;
 
@@ -154,6 +176,44 @@ function render() {
       e.target.value = '';
     }
   });
+
+  const publishBtn = container.querySelector('[data-action="publish-set"]');
+  const statusEl = container.querySelector('#publish-status');
+  publishBtn.addEventListener('click', async () => {
+    publishBtn.disabled = true;
+    statusEl.textContent = 'Wird veröffentlicht...';
+    try {
+      const currentSet = state.getVocabSets().find((s) => s.id === activeSet.id) ?? activeSet;
+      const payload = { name: currentSet.name, entries: currentSet.entries };
+      if (publishInfo) {
+        await updateRemoteSet(publishInfo.remoteId, publishInfo.editToken, payload);
+        statusEl.textContent = 'Aktualisiert um ' + new Date().toLocaleTimeString('de-DE');
+        publishBtn.disabled = false;
+      } else {
+        const { id, editToken } = await publishSet(payload);
+        const url = `${location.origin}/s/${id}`;
+        state.setPublishInfo(activeSet.id, { remoteId: id, editToken, url });
+      }
+    } catch (err) {
+      statusEl.textContent = err.message || 'Fehler beim Veröffentlichen.';
+      publishBtn.disabled = false;
+    }
+  });
+
+  const copyBtn = container.querySelector('[data-action="copy-link"]');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(publishInfo.url);
+        copyBtn.textContent = 'Kopiert!';
+        setTimeout(() => {
+          copyBtn.textContent = 'Kopieren';
+        }, 1500);
+      } catch {
+        prompt('Link kopieren:', publishInfo.url);
+      }
+    });
+  }
 }
 
 export function mount(el) {

@@ -1,0 +1,16 @@
+{
+  "name": "english-vocab-quiz",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vokabeltrainer: vocabulary quiz web app with a small Node/Express backend for shareable vocabulary set links.",
+  "scripts": {
+    "start": "node server/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

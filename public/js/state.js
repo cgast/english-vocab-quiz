@@ -5,6 +5,20 @@ import { uid } from './util.js';
 let vocabSets = storage.loadVocabSets();
 let activeSetId = storage.loadActiveSetId(vocabSets);
 let gradeScale = storage.loadGradeScale();
+let publishInfo = storage.loadPublishInfo();
+let importedRemoteMap = storage.loadImportedRemoteMap();
+
+function normalizeEntry(e) {
+  return {
+    id: uid(),
+    en: e.en || '',
+    de: e.de || '',
+    example: e.example || '',
+    synonyms: Array.isArray(e.synonyms) ? e.synonyms : [],
+    antonyms: Array.isArray(e.antonyms) ? e.antonyms : [],
+    definition: e.definition || '',
+  };
+}
 
 const listeners = new Set();
 
@@ -84,6 +98,11 @@ export function deleteVocabSet(setId) {
     activeSetId = vocabSets[0].id;
     storage.saveActiveSetId(activeSetId);
   }
+  if (publishInfo[setId]) {
+    const { [setId]: _drop, ...rest } = publishInfo;
+    publishInfo = rest;
+    storage.savePublishInfo(publishInfo);
+  }
   persistSets();
   return true;
 }
@@ -115,15 +134,7 @@ export function importVocabSets(newSets, { replace } = { replace: false }) {
   const normalized = newSets.map((s) => ({
     id: uid(),
     name: s.name || 'Importierte Liste',
-    entries: (s.entries || []).map((e) => ({
-      id: uid(),
-      en: e.en || '',
-      de: e.de || '',
-      example: e.example || '',
-      synonyms: Array.isArray(e.synonyms) ? e.synonyms : [],
-      antonyms: Array.isArray(e.antonyms) ? e.antonyms : [],
-      definition: e.definition || '',
-    })),
+    entries: (s.entries || []).map(normalizeEntry),
   }));
   vocabSets = replace ? normalized : [...vocabSets, ...normalized];
   if (vocabSets.length === 0) vocabSets = [createDefaultSet()];
@@ -131,10 +142,45 @@ export function importVocabSets(newSets, { replace } = { replace: false }) {
   setActiveSetId(vocabSets[0].id);
 }
 
+export function getPublishInfo(setId) {
+  return publishInfo[setId] || null;
+}
+
+export function setPublishInfo(setId, info) {
+  publishInfo = { ...publishInfo, [setId]: info };
+  storage.savePublishInfo(publishInfo);
+  notify();
+}
+
+export function importRemoteSet(remoteRecord) {
+  const existingLocalId = importedRemoteMap[remoteRecord.id];
+  const existingSet = existingLocalId && vocabSets.find((s) => s.id === existingLocalId);
+  const entries = (remoteRecord.entries || []).map(normalizeEntry);
+
+  if (existingSet) {
+    vocabSets = vocabSets.map((s) =>
+      s.id === existingSet.id ? { ...s, name: remoteRecord.name, entries } : s
+    );
+    persistSets();
+    setActiveSetId(existingSet.id);
+    return existingSet.id;
+  }
+
+  const newSet = { id: uid(), name: remoteRecord.name, entries };
+  vocabSets = [...vocabSets, newSet];
+  importedRemoteMap = { ...importedRemoteMap, [remoteRecord.id]: newSet.id };
+  storage.saveImportedRemoteMap(importedRemoteMap);
+  persistSets();
+  setActiveSetId(newSet.id);
+  return newSet.id;
+}
+
 export function resetToDefaults() {
   storage.resetAllData();
   vocabSets = storage.loadVocabSets();
   activeSetId = storage.loadActiveSetId(vocabSets);
   gradeScale = storage.loadGradeScale();
+  publishInfo = storage.loadPublishInfo();
+  importedRemoteMap = storage.loadImportedRemoteMap();
   notify();
 }
